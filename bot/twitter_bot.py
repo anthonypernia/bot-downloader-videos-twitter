@@ -6,7 +6,7 @@ import requests
 import tweepy
 
 
-class TwitterController:
+class TwitterBot:
     """Twitter Controller"""
 
     def __init__(

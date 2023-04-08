@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Union
 
-from bot.twitter_controller import TwitterController
+from bot.twitter_bot import TwitterBot
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,7 +16,7 @@ class MainProcess:
         self, path_to_download: Union[str, Dict[str, str]], **dict_auth_bot
     ) -> None:
         """Create a main process object"""
-        self.twitter_handler = TwitterController(**dict_auth_bot)
+        self.twitter_bot = TwitterBot(**dict_auth_bot)
         logging.info("starting process")
         self.last_id: Optional[str] = None
         self.path_to_download: str = str(path_to_download)
@@ -25,11 +25,9 @@ class MainProcess:
         """Run the main process"""
         if self.last_id:
             logging.info("Last id: %s Date: %s", self.last_id, datetime.now())
-            data_reply = self.twitter_handler.get_mentions(
-                count=10, since_id=self.last_id
-            )
+            data_reply = self.twitter_bot.get_mentions(count=10, since_id=self.last_id)
         else:
-            data_reply = self.twitter_handler.get_mentions(count=10)
+            data_reply = self.twitter_bot.get_mentions(count=10)
         time.sleep(2)
         logging.info("Data reply count: %s Date: %s", len(data_reply), datetime.now())
         if len(data_reply) > 0:
@@ -72,22 +70,19 @@ class MainProcess:
                 tweet_id_to_download = data["in_reply_to_status_id"]
                 tweet_id = data["id"]
                 time.sleep(1)
-                self.twitter_handler.download_media_from_tweet(
+                self.twitter_bot.download_media_from_tweet(
                     tweet_id=tweet_id_to_download, path=self.path_to_download
                 )
                 logging.info("Video downloaded. date: %s", datetime.now())
                 time.sleep(1)
-                self.twitter_handler.reply_in_thread(
+                self.twitter_bot.reply_in_thread(
                     tweet_id=tweet_id,
                     status="Video downloaded and saved in Downloads folder",
                 )
                 logging.info("Reply sent date: %s", datetime.now())
                 time.sleep(1)
-                self.twitter_handler.like(tweet_id=tweet_id)
+                self.twitter_bot.like(tweet_id=tweet_id)
                 logging.info("Tweet favorited date: %s", datetime.now())
                 time.sleep(1)
             else:
                 logging.info("No new mentions. date: %s", datetime.now())
-
-
-# @DownloaderBotAP Download bot
