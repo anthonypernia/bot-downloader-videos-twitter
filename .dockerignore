@@ -6,3 +6,5 @@ README.md
 .pylintrc
 venv
 __pycache__
+media-bot
+*.mp4

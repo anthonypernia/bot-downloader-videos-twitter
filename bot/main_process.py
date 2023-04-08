@@ -67,25 +67,25 @@ class MainProcess:
             )
             datetime_now = datetime.now(tz=datetime_created_at.tzinfo)
             diff = datetime_now - datetime_created_at
-            if diff < timedelta(seconds=2000):
+            if diff < timedelta(seconds=20):
                 logging.info("Tweet id: %s Date: %s", data["id"], datetime.now())
                 tweet_id_to_download = data["in_reply_to_status_id"]
                 tweet_id = data["id"]
-                time.sleep(2)
+                time.sleep(1)
                 self.twitter_handler.download_media_from_tweet(
                     tweet_id=tweet_id_to_download, path=self.path_to_download
                 )
                 logging.info("Video downloaded. date: %s", datetime.now())
-                time.sleep(2)
+                time.sleep(1)
                 self.twitter_handler.reply_in_thread(
                     tweet_id=tweet_id,
                     status="Video downloaded and saved in Downloads folder",
                 )
                 logging.info("Reply sent date: %s", datetime.now())
-                time.sleep(2)
+                time.sleep(1)
                 self.twitter_handler.like(tweet_id=tweet_id)
                 logging.info("Tweet favorited date: %s", datetime.now())
-                time.sleep(2)
+                time.sleep(1)
             else:
                 logging.info("No new mentions. date: %s", datetime.now())
 
