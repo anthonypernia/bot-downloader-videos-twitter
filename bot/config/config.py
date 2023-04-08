@@ -1,4 +1,6 @@
 """Module to read config file"""
+from typing import Dict, Union
+
 import yaml
 
 
@@ -13,7 +15,7 @@ class Config:
         with open(config_file, encoding="utf-8") as file:
             self.config = yaml.load(file, Loader=yaml.FullLoader)
 
-    def get(self, key: str) -> dict:
+    def get(self, key: str) -> Union[str, Dict[str, str]]:
         """get a value from the config file
         Args:
             key (str): key to get value for

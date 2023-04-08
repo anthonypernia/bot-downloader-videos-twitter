@@ -2,7 +2,7 @@
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Dict, Optional, Union
 
 from bot.twitter_controller import TwitterController
 
@@ -12,11 +12,14 @@ logging.basicConfig(level=logging.INFO)
 class MainProcess:
     """Main process of the bot"""
 
-    def __init__(self, **dict_auth_bot) -> None:
+    def __init__(
+        self, path_to_download: Union[str, Dict[str, str]], **dict_auth_bot
+    ) -> None:
         """Create a main process object"""
         self.twitter_handler = TwitterController(**dict_auth_bot)
         logging.info("starting process")
         self.last_id: Optional[str] = None
+        self.path_to_download: str = str(path_to_download)
 
     def run(self):
         """Run the main process"""
@@ -70,7 +73,7 @@ class MainProcess:
                 tweet_id = data["id"]
                 time.sleep(2)
                 self.twitter_handler.download_media_from_tweet(
-                    tweet_id=tweet_id_to_download, path="/Users/anthonypernia/Downloads"
+                    tweet_id=tweet_id_to_download, path=self.path_to_download
                 )
                 logging.info("Video downloaded. date: %s", datetime.now())
                 time.sleep(2)
