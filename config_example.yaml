@@ -1,8 +1,7 @@
 
 authentication:
-  api_key: ""
-  api_secret_key: ""
-  access_token: ""
-  access_token_secret: ""
-
-path_to_download: "/media"
+  api_key: "xxxxxxxxxx"
+  api_secret_key: "xxxxxxxxxxxxxx"
+  access_token: "xxxx-xxxxxxxxxx"
+  access_token_secret: "xxxxxxxxxxxxxxxx"
+  dropbox_acess_token: "sl.xxxxxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxxx"
