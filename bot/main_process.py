@@ -81,9 +81,10 @@ class MainProcess:
             )
         status = f"Hi @{username}! Here are the links to download the video.\n"
         status += status_links
-        status += "\nThis files will be available for 1 hour"
-        status += f"\nThis bot is open source, you can check the code here: {shorten_link('https://github.com/anthonypernia/bot-downloader-videos-twitter')}"
-        status += f"\nDeveloped by @AnthonyPerniah"
+        status += "This files will be available for 1 hour\n"
+        # status += f"This bot is open source, code is here: {shorten_link('https://github.com/anthonypernia/bot-downloader-videos-twitter')}"
+        # if len(status) < 260:
+        #    status += f"\nDeveloped by @AnthonyPerniah"
         return status
 
     @staticmethod
@@ -129,7 +130,7 @@ class MainProcess:
             )
             datetime_now = datetime.now(tz=datetime_created_at.tzinfo)
             diff = datetime_now - datetime_created_at
-            if diff < timedelta(seconds=20):
+            if diff < timedelta(seconds=100000):
                 logging.info(f"Tweet id: { data['id']} Date: {datetime.now()}")
                 tweet_id_to_download = data["in_reply_to_status_id"]
                 tweet_id = data["id"]

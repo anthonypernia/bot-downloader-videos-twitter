@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 if __name__ == "__main__":
     config = Config(c.CONFIG_FILE)
     process = MainProcess(**config.get(c.AUTHENTICATION))  # type: ignore
-    process.run()
+    # process.run()
     while True:
         process.run()
         time.sleep(5)
