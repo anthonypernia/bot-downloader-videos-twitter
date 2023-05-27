@@ -1,10 +1,17 @@
 """ Main process of the bot """
 import logging
+import os
 import time
-from datetime import datetime, timedelta
-from typing import Dict, Optional, Union
+from datetime import datetime, timedelta, timezone
+from functools import reduce
+from typing import Optional
 
+import pytz
+import requests
+
+from bot.dropbox_uploader import DropboxUploader
 from bot.twitter_bot import TwitterBot
+from bot.util.utils import shorten_link
 
 logging.basicConfig(level=logging.INFO)
 
@@ -12,14 +19,31 @@ logging.basicConfig(level=logging.INFO)
 class MainProcess:
     """Main process of the bot"""
 
-    def __init__(
-        self, path_to_download: Union[str, Dict[str, str]], **dict_auth_bot
-    ) -> None:
+    def __init__(self, **dict_auth_bot) -> None:
         """Create a main process object"""
-        self.twitter_bot = TwitterBot(**dict_auth_bot)
+        api_key = dict_auth_bot.get("api_key", None)
+        api_secret_key = dict_auth_bot.get("api_secret_key", None)
+        access_token = dict_auth_bot.get("access_token", None)
+        access_token_secret = dict_auth_bot.get("access_token_secret", None)
+        dropbox_acess_token = dict_auth_bot.get("dropbox_acess_token", None)
+        if (
+            not api_key
+            or not api_secret_key
+            or not access_token
+            or not access_token_secret
+            or not dropbox_acess_token
+        ):
+            logging.error("Missing authentication credentials")
+            raise ValueError("Missing authentication credentials")
+        self.twitter_bot = TwitterBot(
+            access_token=access_token,
+            access_token_secret=access_token_secret,
+            api_key=api_key,
+            api_secret_key=api_secret_key,
+        )
+        self.dropbox_uploader = DropboxUploader(access_token=dropbox_acess_token)
         logging.info("starting process")
         self.last_id: Optional[str] = None
-        self.path_to_download: str = str(path_to_download)
 
     def run(self):
         """Run the main process"""
@@ -39,6 +63,27 @@ class MainProcess:
             logging.info("No new mentions, Date: %s", datetime.now())
         time.sleep(10)
 
+    def format_status(self, tweet_id: str, media_links_from_tweet: list) -> str:
+        """Format status to reply in thread
+        Args:
+            tweet_id (str): id of the tweet
+            media_links_from_tweet (list): links to download the video
+
+        Returns:
+            str: status to reply in thread
+        """
+        tweet = self.twitter_bot.get_tweet_by_id(tweet_id)
+        username = tweet["user"]["screen_name"]
+        status_links = ""
+        for media_link in media_links_from_tweet:
+            status_links += (
+                f"{media_link['resolution']}: {shorten_link(media_link['link'])} \n"
+            )
+        status = f"Hi @{username}! Here are the links to download the video.\n"
+        status += status_links
+        status += "\nThis files will be available for 1 hour"
+        return status
+
     @staticmethod
     def order_by_date(data_tweets: list) -> list:
         """Order tweets by date
@@ -52,6 +97,23 @@ class MainProcess:
             key=lambda x: datetime.strptime(x["created_at"], "%a %b %d %H:%M:%S %z %Y"),
             reverse=True,
         )
+
+    def clean_media_data(self):
+        """Clean media data from dropbox"""
+        arg_timezone = pytz.timezone("America/Argentina/Buenos_Aires")
+        older_than_60 = (datetime.now() - timedelta(minutes=60)).astimezone(
+            arg_timezone
+        )
+        media_data_cloud = self.dropbox_uploader.list_files_in_dropbox_folder()
+        if media_data_cloud:
+            for media in media_data_cloud:
+                server_modified = media.server_modified
+                server_modified = server_modified.replace(
+                    tzinfo=timezone.utc
+                ).astimezone(arg_timezone)
+                if server_modified < older_than_60:
+                    print(f"Removing file {media.path_lower}")
+                    self.dropbox_uploader.remove_file_from_dropbox(media.path_lower)
 
     def process_tweets(self, data_reply: list) -> None:
         """Process tweets
@@ -69,20 +131,110 @@ class MainProcess:
                 logging.info("Tweet id: %s Date: %s", data["id"], datetime.now())
                 tweet_id_to_download = data["in_reply_to_status_id"]
                 tweet_id = data["id"]
-                time.sleep(1)
-                self.twitter_bot.download_media_from_tweet(
-                    tweet_id=tweet_id_to_download, path=self.path_to_download
+                media_links_from_tweet = self.get_media_from_tweet(
+                    tweet_id=tweet_id_to_download
                 )
-                logging.info("Video downloaded. date: %s", datetime.now())
-                time.sleep(1)
-                self.twitter_bot.reply_in_thread(
-                    tweet_id=tweet_id,
-                    status="Video downloaded and saved in Downloads folder",
-                )
-                logging.info("Reply sent date: %s", datetime.now())
-                time.sleep(1)
-                self.twitter_bot.like(tweet_id=tweet_id)
-                logging.info("Tweet favorited date: %s", datetime.now())
-                time.sleep(1)
+                if media_links_from_tweet:
+                    status_to_reply = self.format_status(
+                        tweet_id, media_links_from_tweet
+                    )
+                    self.twitter_bot.reply_in_thread(
+                        tweet_id=tweet_id,
+                        status=status_to_reply,
+                    )
+                    self.clean_media_data()
+                    logging.info("Reply sent date: %s", datetime.now())
+                    time.sleep(1)
+                    self.twitter_bot.like(tweet_id=tweet_id)
+                    logging.info("Tweet favorited date: %s", datetime.now())
+                    time.sleep(1)
             else:
                 logging.info("No new mentions. date: %s", datetime.now())
+
+    def get_media_from_tweet(self, tweet_id: str) -> Optional[list]:
+        """download media from tweet
+        Args:
+            tweet_id (str): id of tweet
+            path (str): path to save media
+        """
+        try:
+            tweet = self.twitter_bot.get_tweet_by_id(tweet_id)
+            media_data = tweet["extended_entities"]["media"]
+            username = tweet["user"]["screen_name"]
+            datetime_str_yyyymmdd = datetime.strptime(
+                tweet["created_at"], "%a %b %d %H:%M:%S %z %Y"
+            ).strftime("%Y%m%d")
+            media_files_from_tweet = []
+            for media in media_data:
+                video_data = media.get("video_info", None)
+                if video_data:
+                    variants = video_data["variants"]
+                    media_files_from_tweet.append(
+                        self.go_through_variants(
+                            variants, username, tweet_id, datetime_str_yyyymmdd
+                        )
+                    )
+            media_files_from_tweet = reduce(lambda x, y: x + y, media_files_from_tweet)
+            return media_files_from_tweet
+        except Exception as error:  # pylint: disable=broad-except
+            logging.error("Error: %s", error)
+            return None
+
+    def go_through_variants(
+        self, variants: list, username: str, tweet_id: str, datetime_str_yyyymmdd: str
+    ) -> list:
+        """go through variants
+        Args:
+            variants (list): variants of media from tweet
+            path (str): path to save media
+            username (str): username of tweet
+            tweet_id (str): id of tweet
+            datetime_str_yyyymmdd (str): date of tweet
+        """
+        links_to_uploaded_media = []
+        for variant in variants:
+            if variant["content_type"] == "video/mp4":
+                url = variant["url"]
+                resolution = url.split("/")[-2]
+                print(f"video resolution: {resolution}")
+                filename = (
+                    f"{username}_{datetime_str_yyyymmdd}_{tweet_id}_{resolution}.mp4"
+                )
+                media_data = self.download_media_data(url)
+                if media_data:
+                    temporary_link = self.dropbox_uploader.upload_file_to_dropbox(
+                        media_data, filename
+                    )
+                    if temporary_link:
+                        links_to_uploaded_media.append(
+                            {"resolution": resolution, "link": temporary_link}
+                        )
+            else:
+                logging.info("No video found")
+                logging.info(
+                    "Tweet id: %s Content_type: %s", tweet_id, variant["content_type"]
+                )
+                continue
+        return links_to_uploaded_media
+
+    def download_media_data(self, url: str) -> Optional[bytes]:
+        """download media
+        Args:
+            url (str): url of media
+            path (str): path to save media
+            filename (str): filename of media
+        """
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            logging.info("Downloading video")
+            return response.content
+        logging.info("Error downloading video. Status code: %s", response.status_code)
+        return None
+
+    def create_folder_if_not_exists(self, path: str) -> None:
+        """Create folder if not exists
+        Args:
+            path (str): path to create folder
+        """
+        if not os.path.exists(path):
+            os.makedirs(path)

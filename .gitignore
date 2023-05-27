@@ -3,9 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 media-bot
+test_*
 *.mp4
 # C extensions
 *.so
+.vscode
 config.yaml
 # Distribution / packaging
 .Python

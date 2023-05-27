@@ -10,3 +10,4 @@ pylint
 coverage
 types-PyYAML
 types-requests
+google-api-python-client

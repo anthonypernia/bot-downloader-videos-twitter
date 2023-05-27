@@ -1,8 +1,6 @@
 """ Twitter Controller Module """
-from datetime import datetime
 from typing import Optional
 
-import requests
 import tweepy
 
 
@@ -129,16 +127,17 @@ class TwitterBot:
         tweet = response._json  # pylint: disable=protected-access
         return tweet
 
-    def like(self, tweet_id: str) -> dict:
+    def like(self, tweet_id: str) -> None:
         """like
         Args:
             tweet_id (str): id of tweet
         Returns:
             dict: tweet
         """
-        response = self.api.create_favorite(tweet_id)
-        tweet = response._json  # pylint: disable=protected-access
-        return tweet
+        try:
+            self.api.create_favorite(tweet_id)
+        except Exception as error:  # pylint: disable=broad-except
+            print(error)
 
     def follow(self, username: str) -> dict:
         """follow
@@ -172,39 +171,3 @@ class TwitterBot:
         response = self.api.destroy_friendship(screen_name=username)
         user = response._json  # pylint: disable=protected-access
         return user
-
-    def download_media_from_tweet(self, tweet_id: str, path: str) -> None:
-        """download media from tweet
-        Args:
-            tweet_id (str): id of tweet
-            path (str): path to save media
-        """
-        tweet = self.get_tweet_by_id(tweet_id)
-        media_data = tweet["extended_entities"]["media"]
-        username = tweet["user"]["screen_name"]
-        datetime_str_yyyymmdd = datetime.strptime(
-            tweet["created_at"], "%a %b %d %H:%M:%S %z %Y"
-        ).strftime("%Y%m%d")
-        for media in media_data:
-            video_data = media.get("video_info", None)
-            if video_data:
-                variants = video_data["variants"]
-                for variant in variants:
-                    if variant["content_type"] == "video/mp4":
-                        url = variant["url"]
-                        resolution = url.split("/")[-2]
-                        print(f"video resolution: {resolution}")
-                        filename = f"{username}_{datetime_str_yyyymmdd}_{tweet_id}_{resolution}.mp4"
-                        self.download_media(url, path, filename)
-
-    def download_media(self, url: str, path: str, filename: str) -> None:
-        """download media
-        Args:
-            url (str): url of media
-            path (str): path to save media
-            filename (str): filename of media
-        """
-        response = requests.get(url, timeout=5)
-        with open(f"{path}/{filename}", "wb") as file:
-            file.write(response.content)
-            file.close()

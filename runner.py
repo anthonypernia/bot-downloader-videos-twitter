@@ -10,10 +10,8 @@ logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
     config = Config(c.CONFIG_FILE)
-    print(config.get(c.PATH_TO_DOWNLOAD))
-    process = MainProcess(
-        config.get(c.PATH_TO_DOWNLOAD), **config.get(c.AUTHENTICATION)  # type: ignore
-    )
+    process = MainProcess(**config.get(c.AUTHENTICATION))  # type: ignore
+    process.run()
     while True:
         process.run()
         time.sleep(10)
