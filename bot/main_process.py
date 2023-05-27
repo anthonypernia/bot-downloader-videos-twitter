@@ -82,6 +82,8 @@ class MainProcess:
         status = f"Hi @{username}! Here are the links to download the video.\n"
         status += status_links
         status += "\nThis files will be available for 1 hour"
+        status += f"\nThis bot is open source, you can check the code here: {shorten_link('https://github.com/anthonypernia/bot-downloader-videos-twitter')}"
+        status += f"\nDeveloped by @AnthonyPerniah"
         return status
 
     @staticmethod
