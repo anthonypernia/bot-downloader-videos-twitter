@@ -46,7 +46,7 @@ class TwitterBot:
     def get_tweet_by_id(self, id_tweet: str) -> dict:
         """get tweet by id
         Args:
-            id (str): id of tweet
+            id_tweet (str): id of tweet
         Returns:
             dict: tweet
         """
@@ -62,18 +62,6 @@ class TwitterBot:
             dict: tweet
         """
         response = self.api.update_status(status)
-        tweet = response._json  # pylint: disable=protected-access
-        return tweet
-
-    def tweet_with_media(self, status: str, path_media: str) -> dict:
-        """tweet with media
-        Args:
-            status (str): text of tweet
-            path_media (str): path of media
-        Returns:
-            dict: tweet
-        """
-        response = self.api.update_status_with_media(status=status, filename=path_media)
         tweet = response._json  # pylint: disable=protected-access
         return tweet
 
@@ -131,8 +119,6 @@ class TwitterBot:
         """like
         Args:
             tweet_id (str): id of tweet
-        Returns:
-            dict: tweet
         """
         try:
             self.api.create_favorite(tweet_id)
