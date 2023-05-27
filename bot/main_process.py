@@ -130,7 +130,7 @@ class MainProcess:
             )
             datetime_now = datetime.now(tz=datetime_created_at.tzinfo)
             diff = datetime_now - datetime_created_at
-            if diff < timedelta(seconds=100000):
+            if diff < timedelta(seconds=90):
                 logging.info(f"Tweet id: { data['id']} Date: {datetime.now()}")
                 tweet_id_to_download = data["in_reply_to_status_id"]
                 tweet_id = data["id"]

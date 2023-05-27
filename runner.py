@@ -14,4 +14,4 @@ if __name__ == "__main__":
     # process.run()
     while True:
         process.run()
-        time.sleep(5)
+        time.sleep(90)
