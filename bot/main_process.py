@@ -48,19 +48,19 @@ class MainProcess:
     def run(self):
         """Run the main process"""
         if self.last_id:
-            logging.info("Last id: %s Date: %s", self.last_id, datetime.now())
+            logging.info(f"Last id: {self.last_id} Date: {datetime.now()}")
             data_reply = self.twitter_bot.get_mentions(count=10, since_id=self.last_id)
         else:
             data_reply = self.twitter_bot.get_mentions(count=10)
         time.sleep(2)
-        logging.info("Data reply count: %s Date: %s", len(data_reply), datetime.now())
+        logging.info(f"Data reply count: {len(data_reply)} Date: {datetime.now()}")
         if len(data_reply) > 0:
             data_reply = self.order_by_date(data_reply)
             self.last_id = data_reply[0]["id"]
-            logging.info("Last id set: %s Date: %s", self.last_id, datetime.now())
+            logging.info(f"Last id set: {self.last_id} Date: {datetime.now()}")
             self.process_tweets(data_reply=data_reply)
         else:
-            logging.info("No new mentions, Date: %s", datetime.now())
+            logging.info(f"No new mentions, Date: {datetime.now()}")
         time.sleep(10)
 
     def format_status(self, tweet_id: str, media_links_from_tweet: list) -> str:
@@ -112,7 +112,7 @@ class MainProcess:
                     tzinfo=timezone.utc
                 ).astimezone(arg_timezone)
                 if server_modified < older_than_60:
-                    print(f"Removing file {media.path_lower}")
+                    logging.info(f"Removing file {media.path_lower}")
                     self.dropbox_uploader.remove_file_from_dropbox(media.path_lower)
 
     def process_tweets(self, data_reply: list) -> None:
@@ -128,7 +128,7 @@ class MainProcess:
             datetime_now = datetime.now(tz=datetime_created_at.tzinfo)
             diff = datetime_now - datetime_created_at
             if diff < timedelta(seconds=20):
-                logging.info("Tweet id: %s Date: %s", data["id"], datetime.now())
+                logging.info(f"Tweet id: { data['id']} Date: {datetime.now()}")
                 tweet_id_to_download = data["in_reply_to_status_id"]
                 tweet_id = data["id"]
                 media_links_from_tweet = self.get_media_from_tweet(
@@ -143,19 +143,18 @@ class MainProcess:
                         status=status_to_reply,
                     )
                     self.clean_media_data()
-                    logging.info("Reply sent date: %s", datetime.now())
+                    logging.info(f"Reply sent date: {datetime.now()}")
                     time.sleep(1)
                     self.twitter_bot.like(tweet_id=tweet_id)
-                    logging.info("Tweet favorited date: %s", datetime.now())
+                    logging.info(f"Tweet favorited date: {datetime.now()}")
                     time.sleep(1)
             else:
-                logging.info("No new mentions. date: %s", datetime.now())
+                logging.info(f"No new mentions. date: {datetime.now()}")
 
     def get_media_from_tweet(self, tweet_id: str) -> Optional[list]:
         """download media from tweet
         Args:
             tweet_id (str): id of tweet
-            path (str): path to save media
         """
         try:
             tweet = self.twitter_bot.get_tweet_by_id(tweet_id)
@@ -177,26 +176,29 @@ class MainProcess:
             media_files_from_tweet = reduce(lambda x, y: x + y, media_files_from_tweet)
             return media_files_from_tweet
         except Exception as error:  # pylint: disable=broad-except
-            logging.error("Error: %s", error)
+            logging.error(f"Error: {error}")
             return None
 
     def go_through_variants(
         self, variants: list, username: str, tweet_id: str, datetime_str_yyyymmdd: str
     ) -> list:
-        """go through variants
+        """Go through variants to download the video
+
         Args:
-            variants (list): variants of media from tweet
-            path (str): path to save media
+            variants (list): variants of video from tweet
             username (str): username of tweet
             tweet_id (str): id of tweet
             datetime_str_yyyymmdd (str): date of tweet
+
+        Returns:
+            list: list of links to download the video
         """
         links_to_uploaded_media = []
         for variant in variants:
             if variant["content_type"] == "video/mp4":
                 url = variant["url"]
                 resolution = url.split("/")[-2]
-                print(f"video resolution: {resolution}")
+                logging.info(f"video resolution: {resolution}")
                 filename = (
                     f"{username}_{datetime_str_yyyymmdd}_{tweet_id}_{resolution}.mp4"
                 )
@@ -212,7 +214,7 @@ class MainProcess:
             else:
                 logging.info("No video found")
                 logging.info(
-                    "Tweet id: %s Content_type: %s", tweet_id, variant["content_type"]
+                    f"Tweet id: %s Content_type: {tweet_id, variant['content_type']}"
                 )
                 continue
         return links_to_uploaded_media
@@ -221,14 +223,12 @@ class MainProcess:
         """download media
         Args:
             url (str): url of media
-            path (str): path to save media
-            filename (str): filename of media
         """
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             logging.info("Downloading video")
             return response.content
-        logging.info("Error downloading video. Status code: %s", response.status_code)
+        logging.info(f"Error downloading video. Status code: {response.status_code}")
         return None
 
     def create_folder_if_not_exists(self, path: str) -> None:
